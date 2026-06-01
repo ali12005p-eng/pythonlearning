@@ -6,13 +6,22 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
 
-async def generate_story(user_input: str):
+async def generate_story(history: str):
     prompt = f"""
-أنت كاتب قصص وسيناريوهات تفاعلية.
+أنت كاتب لعبة سيناريو تفاعلية.
 
-المستخدم كتب: {user_input}
+هذا تسلسل الأحداث الحالي بين المستخدم والبوت:
 
-اكتب سيناريو ممتع، قصير، وتفاعلي يخلي المستخدم متحمس يكمل.
+{history}
+
+🔴 القواعد المهمة:
+- لا تبدأ قصة جديدة نهائياً
+- أكمل نفس السيناريو الحالي فقط
+- حافظ على نفس الشخصيات والأحداث
+- ردك لازم يكون استمرار مباشر لما حدث
+- لا تعيد المقدمة أو البداية
+
+اكتب التكملة الآن بشكل مشوق.
 """
 
     completion = client.chat.completions.create(
@@ -20,7 +29,7 @@ async def generate_story(user_input: str):
         messages=[
             {
                 "role": "system",
-                "content": "أنت مساعد متخصص بكتابة سيناريوهات تفاعلية ممتعة ومشوقة."
+                "content": "أنت كاتب قصص وسيناريوهات تفاعلية تستمر بدون إعادة البداية."
             },
             {
                 "role": "user",
