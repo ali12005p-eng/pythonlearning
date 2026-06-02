@@ -17,7 +17,7 @@ dp = Dispatcher()
 # 🔥 بيانات النظام
 # =========================
 
-ADMIN_ID = 123456789  # غيّرها
+ADMIN_ID = 8613698275  # غيّرها
 
 user_sessions = {}
 user_states = {}
