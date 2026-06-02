@@ -30,7 +30,7 @@ async def text_to_voice(text: str, user_id: int):
     return filename
 
 
-# 🔥 إرسال الصوت بدون تعطيل البوت
+# 🔥 إرسال الصوت بالخلفية
 async def send_voice_later(text, user_id, message):
     try:
         voice_file = await text_to_voice(text, user_id)
@@ -112,7 +112,9 @@ async def start_story(callback: CallbackQuery):
             reply_markup=main_menu()
         )
 
-        # 🔥 الصوت بالخلفية بدون تأخير
+        # 🔊 تنبيه قبل الصوت
+        await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
+
         asyncio.create_task(
             send_voice_later(response, user_id, callback.message)
         )
@@ -150,6 +152,9 @@ async def new_story(callback: CallbackQuery):
             response,
             reply_markup=main_menu()
         )
+
+        # 🔊 تنبيه قبل الصوت
+        await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
         asyncio.create_task(
             send_voice_later(response, user_id, callback.message)
@@ -206,7 +211,9 @@ async def handle_message(message: Message):
             reply_markup=main_menu()
         )
 
-        # 🔥 الصوت بالخلفية (بدون تأخير)
+        # 🔊 تنبيه قبل الصوت
+        await message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
+
         asyncio.create_task(
             send_voice_later(response, user_id, message)
         )
