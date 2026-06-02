@@ -18,17 +18,26 @@ user_sessions = {}
 # نظام الحالة (فوز/خسارة)
 user_states = {}
 
-# 🔊 صوت احترافي قوي
+# 🔊 توليد الصوت
 async def text_to_voice(text: str, user_id: int):
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
-    # 🔥 صوت رجالي قوي وحاد
     voice = "ar-EG-ShakirNeural"
 
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(filename)
 
     return filename
+
+
+# 🔥 إرسال الصوت بدون تعطيل البوت
+async def send_voice_later(text, user_id, message):
+    try:
+        voice_file = await text_to_voice(text, user_id)
+        await message.answer_voice(FSInputFile(voice_file))
+        os.remove(voice_file)
+    except:
+        pass
 
 
 def main_menu():
@@ -98,18 +107,15 @@ async def start_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = await text_to_voice(response, user_id)
-
         await callback.message.answer(
             response,
             reply_markup=main_menu()
         )
 
-        await callback.message.answer_voice(
-            FSInputFile(voice_file)
+        # 🔥 الصوت بالخلفية بدون تأخير
+        asyncio.create_task(
+            send_voice_later(response, user_id, callback.message)
         )
-
-        os.remove(voice_file)
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -140,18 +146,14 @@ async def new_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = await text_to_voice(response, user_id)
-
         await callback.message.answer(
             response,
             reply_markup=main_menu()
         )
 
-        await callback.message.answer_voice(
-            FSInputFile(voice_file)
+        asyncio.create_task(
+            send_voice_later(response, user_id, callback.message)
         )
-
-        os.remove(voice_file)
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -181,7 +183,6 @@ async def handle_message(message: Message):
     try:
         response = await generate_story(history)
 
-        # 🎯 نظام الفوز والخسارة بدون إنهاء القصة
         text_lower = response.lower()
 
         if "نجحت" in text_lower or "فزت" in text_lower:
@@ -200,18 +201,15 @@ async def handle_message(message: Message):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = await text_to_voice(response, user_id)
-
         await message.answer(
             response,
             reply_markup=main_menu()
         )
 
-        await message.answer_voice(
-            FSInputFile(voice_file)
+        # 🔥 الصوت بالخلفية (بدون تأخير)
+        asyncio.create_task(
+            send_voice_later(response, user_id, message)
         )
-
-        os.remove(voice_file)
 
     except Exception as e:
         await message.answer(f"❌ خطأ: {e}")
