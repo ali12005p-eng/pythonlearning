@@ -1,8 +1,10 @@
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 from aiogram.filters import CommandStart
 from ai import generate_story
+from gtts import gTTS
 import os
+import uuid
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -14,6 +16,16 @@ user_sessions = {}
 
 # نظام الحالة (فوز/خسارة)
 user_states = {}
+
+# 🔊 تحويل النص إلى صوت
+def text_to_voice(text: str, user_id: int):
+    filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.ogg"
+
+    tts = gTTS(text=text, lang="ar")
+    tts.save(filename)
+
+    return filename
+
 
 def main_menu():
     return InlineKeyboardMarkup(
@@ -39,6 +51,7 @@ def main_menu():
         ]
     )
 
+
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer(
@@ -56,6 +69,7 @@ async def start(message: Message):
         "اضغط على (🎮 بدء القصة) لبدء مغامرتك الأولى.",
         reply_markup=main_menu()
     )
+
 
 @dp.callback_query(F.data == "start_story")
 async def start_story(callback: CallbackQuery):
@@ -80,10 +94,18 @@ async def start_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
+        voice_file = text_to_voice(response, user_id)
+
         await callback.message.answer(
             response,
             reply_markup=main_menu()
         )
+
+        await callback.message.answer_voice(
+            FSInputFile(voice_file)
+        )
+
+        os.remove(voice_file)
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -114,10 +136,18 @@ async def new_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
+        voice_file = text_to_voice(response, user_id)
+
         await callback.message.answer(
             response,
             reply_markup=main_menu()
         )
+
+        await callback.message.answer_voice(
+            FSInputFile(voice_file)
+        )
+
+        os.remove(voice_file)
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -166,10 +196,18 @@ async def handle_message(message: Message):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
+        voice_file = text_to_voice(response, user_id)
+
         await message.answer(
             response,
             reply_markup=main_menu()
         )
+
+        await message.answer_voice(
+            FSInputFile(voice_file)
+        )
+
+        os.remove(voice_file)
 
     except Exception as e:
         await message.answer(f"❌ خطأ: {e}")
