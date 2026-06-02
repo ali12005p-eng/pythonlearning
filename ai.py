@@ -6,7 +6,34 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
 
+# 🔥 فلتر قوي لإجبار العربية فقط
+SYSTEM_RULES = """
+أنت كاتب ومدير لعبة RPG تفاعلية.
+
+قواعد صارمة جداً:
+- اكتب باللغة العربية الفصحى فقط.
+- ممنوع استخدام أي كلمات إنجليزية نهائياً.
+- ممنوع خلط لغات أو حروف أجنبية.
+- ممنوع كتابة كلمات مشوهة أو غير مفهومة.
+- إذا احتجت مصطلح أجنبي، قم بترجمته للعربية فقط.
+- حافظ على أسلوب قصصي سينمائي ممتع.
+- لا تكسر القصة أو تغير الأحداث السابقة.
+"""
+
+
+def clean_text(text: str) -> str:
+    """
+    تنظيف بسيط لأي حروف أجنبية أو رموز غريبة
+    بدون التأثير على المعنى الأساسي
+    """
+    allowed = "ابتثجحخدذرزسشصضطظعغفقكلمنهويىئءةأإآ 0123456789؟!.,:-\n\"'()"
+
+    cleaned = "".join(ch for ch in text if ch in allowed)
+    return cleaned
+
+
 async def generate_story(history: str):
+
     prompt = f"""
 أنت مدير لعبة RPG تفاعلية باللغة العربية.
 
@@ -47,13 +74,7 @@ async def generate_story(history: str):
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "أنت مدير لعبة RPG تفاعلية. "
-                    "في بداية أي قصة جديدة يجب شرح العالم، "
-                    "ودور اللاعب، وهدفه، ثم بدء أول مشهد. "
-                    "بعد ذلك يجب أن تتغير الأحداث بناءً على "
-                    "تصرفات اللاعب فقط مع الحفاظ على الاستمرارية."
-                )
+                "content": SYSTEM_RULES
             },
             {
                 "role": "user",
@@ -64,4 +85,7 @@ async def generate_story(history: str):
         max_tokens=1024
     )
 
-    return completion.choices[0].message.content
+    response = completion.choices[0].message.content
+
+    # 🔥 تنظيف أي لغات أو رموز غريبة قبل الإرسال
+    return clean_text(response)
