@@ -43,8 +43,9 @@ async def start_story(callback: CallbackQuery):
 
     user_id = callback.from_user.id
 
+    # 🔥 بداية قصة مع شرح العالم ودور اللاعب
     user_sessions[user_id] = [
-        "ابدأ سيناريو جديد ومثير للمستخدم."
+        "ابدأ لعبة RPG جديدة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
     ]
 
     await callback.message.edit_text(
@@ -56,9 +57,7 @@ async def start_story(callback: CallbackQuery):
             "\n".join(user_sessions[user_id])
         )
 
-        user_sessions[user_id].append(
-            f"Bot: {response}"
-        )
+        user_sessions[user_id].append(f"Bot: {response}")
 
         await callback.message.answer(
             response,
@@ -77,8 +76,9 @@ async def new_story(callback: CallbackQuery):
 
     user_id = callback.from_user.id
 
+    # 🔥 قصة جديدة مع نفس الفكرة (شرح + بداية)
     user_sessions[user_id] = [
-        "ابدأ قصة مختلفة تماماً عن السابقة."
+        "ابدأ لعبة RPG جديدة مختلفة تماماً عن السابقة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
     ]
 
     await callback.message.answer(
@@ -90,9 +90,7 @@ async def new_story(callback: CallbackQuery):
             "\n".join(user_sessions[user_id])
         )
 
-        user_sessions[user_id].append(
-            f"Bot: {response}"
-        )
+        user_sessions[user_id].append(f"Bot: {response}")
 
         await callback.message.answer(
             response,
@@ -119,22 +117,15 @@ async def handle_message(message: Message):
         )
         return
 
-    user_sessions[user_id].append(
-        f"User: {user_text}"
-    )
+    # حفظ تفاعل اللاعب
+    user_sessions[user_id].append(f"User: {user_text}")
 
-    history = "\n".join(
-        user_sessions[user_id]
-    )
+    history = "\n".join(user_sessions[user_id])
 
     try:
-        response = await generate_story(
-            history
-        )
+        response = await generate_story(history)
 
-        user_sessions[user_id].append(
-            f"Bot: {response}"
-        )
+        user_sessions[user_id].append(f"Bot: {response}")
 
         await message.answer(
             response,
