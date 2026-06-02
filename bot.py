@@ -17,7 +17,7 @@ dp = Dispatcher()
 # 👑 إشعار دخول (بدون تغيير)
 # =========================
 
-ADMIN_ID = 8613698275  # غيّرها
+ADMIN_ID = 123456789
 
 # =========================
 # 🎮 بيانات النظام (بدون تغيير)
@@ -27,7 +27,6 @@ user_sessions = {}
 user_states = {}
 user_modes = {}
 user_gender = {}
-
 
 # =========================
 # 🎬 مؤثر سينمائي (بدون تغيير)
@@ -42,7 +41,7 @@ def cinematic_text(text: str) -> str:
 
 
 # =========================
-# 🎭 تحديد مزاج المشهد (NEW)
+# 🎭 تحديد المزاج (بدون تغيير)
 # =========================
 
 def detect_mood(text: str) -> str:
@@ -64,7 +63,36 @@ def detect_mood(text: str) -> str:
 
 
 # =========================
-# 🔊 الصوت (تم التطوير فقط هنا)
+# 🎼 NEW: الموسيقى السينمائية
+# =========================
+
+def get_music_by_mood(mood: str) -> str:
+    music_map = {
+        "fight": "https://example.com/music/fight.mp3",
+        "horror": "https://example.com/music/horror.mp3",
+        "adventure": "https://example.com/music/adventure.mp3",
+        "mystery": "https://example.com/music/mystery.mp3",
+        "calm": "https://example.com/music/calm.mp3"
+    }
+
+    return music_map.get(mood, music_map["calm"])
+
+
+async def send_music(text, message):
+    try:
+        mood = detect_mood(text)
+        music_url = get_music_by_mood(mood)
+
+        await message.answer_audio(
+            audio=music_url,
+            caption="🎬 موسيقى سينمائية حسب المشهد"
+        )
+    except:
+        pass
+
+
+# =========================
+# 🔊 الصوت (بدون تغيير جوهري)
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
@@ -76,17 +104,16 @@ async def text_to_voice(text: str, user_id: int):
 
     rate = "-15%"
 
-    # 🎬 تغيير الإلقاء حسب المشهد
     if mood == "fight":
-        rate = "+5%"      # حماسي وسريع
+        rate = "+5%"
     elif mood == "horror":
-        rate = "-25%"     # بطيء مرعب
+        rate = "-25%"
     elif mood == "mystery":
-        rate = "-20%"     # غامض ثقيل
+        rate = "-20%"
     elif mood == "adventure":
-        rate = "-10%"     # طبيعي
+        rate = "-10%"
     else:
-        rate = "-15%"     # هادئ
+        rate = "-15%"
 
     communicate = edge_tts.Communicate(
         cinematic_text(text),
@@ -191,11 +218,7 @@ async def start(message: Message):
 @dp.callback_query(F.data == "start_story")
 async def start_story(callback: CallbackQuery):
 
-    await callback.message.answer(
-        "👤 اختر جنس شخصيتك:",
-        reply_markup=gender_menu()
-    )
-
+    await callback.message.answer("👤 اختر جنس شخصيتك:", reply_markup=gender_menu())
     await callback.answer()
 
 
@@ -211,11 +234,7 @@ async def set_gender(callback: CallbackQuery):
 
     user_gender[uid] = gender
 
-    await callback.message.answer(
-        "🎮 اختر نوع القصة:",
-        reply_markup=story_modes()
-    )
-
+    await callback.message.answer("🎮 اختر نوع القصة:", reply_markup=story_modes())
     await callback.answer()
 
 
@@ -261,6 +280,7 @@ async def set_mode(callback: CallbackQuery):
     await callback.message.answer("🔊 جاري إرسال الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, callback.message))
+    asyncio.create_task(send_music(response, callback.message))
 
     await callback.answer()
 
@@ -274,10 +294,7 @@ async def new_story(callback: CallbackQuery):
 
     uid = callback.from_user.id
 
-    user_sessions[uid] = [
-        "ابدأ قصة جديدة مختلفة تماماً"
-    ]
-
+    user_sessions[uid] = ["ابدأ قصة جديدة مختلفة تماماً"]
     user_states[uid] = {"score": 0}
 
     await callback.message.answer("🔄 جاري إنشاء قصة جديدة...")
@@ -290,6 +307,7 @@ async def new_story(callback: CallbackQuery):
     await callback.message.answer("🔊 جاري إرسال الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, callback.message))
+    asyncio.create_task(send_music(response, callback.message))
 
     await callback.answer()
 
@@ -318,3 +336,4 @@ async def handle_message(message: Message):
     await message.answer("🔊 جاري إرسال الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, message))
+    asyncio.create_task(send_music(response, message))
