@@ -14,7 +14,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # =========================
-# 👑 إشعار دخول (كما هو)
+# 👑 إشعار دخول (بدون تغيير)
 # =========================
 
 ADMIN_ID = 8613698275  # غيّرها
@@ -28,12 +28,12 @@ user_states = {}
 user_modes = {}
 user_gender = {}
 
+
 # =========================
-# 🎬 NEW: المؤثر السينمائي فقط
+# 🎬 مؤثر سينمائي (بدون تغيير)
 # =========================
 
 def cinematic_text(text: str) -> str:
-    # إضافة توقفات درامية لتحسين الإلقاء
     text = text.replace(".", ". ..")
     text = text.replace("،", "، ..")
     text = text.replace("!", "! ..")
@@ -42,22 +42,56 @@ def cinematic_text(text: str) -> str:
 
 
 # =========================
-# 🔊 الصوت (فقط تعديل هنا)
+# 🎭 تحديد مزاج المشهد (NEW)
+# =========================
+
+def detect_mood(text: str) -> str:
+    text = text.lower()
+
+    if "قتل" in text or "سيف" in text or "هجوم" in text:
+        return "fight"
+
+    if "خوف" in text or "ظلام" in text or "صرخة" in text:
+        return "horror"
+
+    if "رحلة" in text or "طريق" in text or "سفر" in text:
+        return "adventure"
+
+    if "سر" in text or "غامض" in text:
+        return "mystery"
+
+    return "calm"
+
+
+# =========================
+# 🔊 الصوت (تم التطوير فقط هنا)
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
-    # صوت فصيح سعودي
+    mood = detect_mood(text)
+
     voice = "ar-SA-HamedNeural"
 
-    # 🎬 تطبيق المؤثر السينمائي
-    text = cinematic_text(text)
+    rate = "-15%"
+
+    # 🎬 تغيير الإلقاء حسب المشهد
+    if mood == "fight":
+        rate = "+5%"      # حماسي وسريع
+    elif mood == "horror":
+        rate = "-25%"     # بطيء مرعب
+    elif mood == "mystery":
+        rate = "-20%"     # غامض ثقيل
+    elif mood == "adventure":
+        rate = "-10%"     # طبيعي
+    else:
+        rate = "-15%"     # هادئ
 
     communicate = edge_tts.Communicate(
-        text,
+        cinematic_text(text),
         voice,
-        rate="-15%"
+        rate=rate
     )
 
     await communicate.save(filename)
