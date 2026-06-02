@@ -14,7 +14,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # =========================
-# 👑 فقط إضافة إشعار الدخول
+# 👑 إشعار الدخول فقط (كما هو)
 # =========================
 
 ADMIN_ID = 8613698275  # غيّرها
@@ -28,16 +28,22 @@ user_states = {}
 user_modes = {}
 user_gender = {}
 
-
 # =========================
-# 🔊 الصوت (بدون تغيير)
+# 🔊 الصوت (فقط تم التعديل هنا)
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
-    voice = "ar-EG-ShakirNeural"
 
-    communicate = edge_tts.Communicate(text, voice)
+    # 🔥 صوت فصيح + أفخم
+    voice = "ar-SA-HamedNeural"
+
+    communicate = edge_tts.Communicate(
+        text,
+        voice,
+        rate="-15%"  # بطء خفيف للفهم
+    )
+
     await communicate.save(filename)
 
     return filename
@@ -106,13 +112,10 @@ def gender_menu():
 @dp.message(CommandStart())
 async def start(message: Message):
 
-    # 🔔 فقط الإضافة المطلوبة: إشعار دخول الأدمن
     try:
         await bot.send_message(
             ADMIN_ID,
-            f"🔔 دخول مستخدم جديد:\n"
-            f"🆔 ID: {message.from_user.id}\n"
-            f"👤 Username: @{message.from_user.username}"
+            f"🔔 دخول مستخدم:\nID: {message.from_user.id}\n@{message.from_user.username}"
         )
     except:
         pass
@@ -132,7 +135,7 @@ async def start(message: Message):
 
 
 # =========================
-# 🎮 بدء القصة (بدون تغيير)
+# 🎮 باقي النظام (بدون تغيير)
 # =========================
 
 @dp.callback_query(F.data == "start_story")
@@ -145,10 +148,6 @@ async def start_story(callback: CallbackQuery):
 
     await callback.answer()
 
-
-# =========================
-# 👤 الجنس (بدون تغيير)
-# =========================
 
 @dp.callback_query(F.data.startswith("gender_"))
 async def set_gender(callback: CallbackQuery):
@@ -165,10 +164,6 @@ async def set_gender(callback: CallbackQuery):
 
     await callback.answer()
 
-
-# =========================
-# 🎲 النمط (بدون تغيير)
-# =========================
 
 @dp.callback_query(F.data.startswith("mode_"))
 async def set_mode(callback: CallbackQuery):
@@ -212,10 +207,6 @@ async def set_mode(callback: CallbackQuery):
     await callback.answer()
 
 
-# =========================
-# 🔄 قصة جديدة (بدون تغيير)
-# =========================
-
 @dp.callback_query(F.data == "new_story")
 async def new_story(callback: CallbackQuery):
 
@@ -240,10 +231,6 @@ async def new_story(callback: CallbackQuery):
 
     await callback.answer()
 
-
-# =========================
-# 💬 التفاعل (بدون تغيير)
-# =========================
 
 @dp.message()
 async def handle_message(message: Message):
