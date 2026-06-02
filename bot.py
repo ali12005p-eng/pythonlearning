@@ -17,13 +17,16 @@ dp = Dispatcher()
 # 🔥 بيانات النظام
 # =========================
 
-ADMIN_ID = 8613698275  # غيّرها
+ADMIN_ID = 123456789  # غيّرها
 
 user_sessions = {}
 user_states = {}
 user_modes = {}
 user_gender = {}
 blocked_users = set()
+
+# 👑 وضع الأدمن
+admin_state = {}  # broadcast / ban / unban
 
 
 # =========================
@@ -53,45 +56,11 @@ async def send_voice_later(text, user_id, message):
 # 🎮 القوائم
 # =========================
 
-def story_modes():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🌿 هدوء", callback_data="mode_calm"),
-                InlineKeyboardButton(text="🧭 مغامرة", callback_data="mode_adventure")
-            ],
-            [
-                InlineKeyboardButton(text="⚔️ قتال", callback_data="mode_fight"),
-                InlineKeyboardButton(text="😱 رعب", callback_data="mode_horror")
-            ],
-            [
-                InlineKeyboardButton(text="🏰 فانتازيا", callback_data="mode_fantasy"),
-                InlineKeyboardButton(text="🔮 غموض", callback_data="mode_mystery")
-            ],
-            [
-                InlineKeyboardButton(text="🎲 قصة عشوائية", callback_data="mode_random")
-            ]
-        ]
-    )
-
-
 def main_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🎮 بدء القصة", callback_data="start_story")],
-            [InlineKeyboardButton(text="🔄 قصة جديدة", callback_data="new_story")],
-            [InlineKeyboardButton(text="👤 Developer: Ali Hussein", url="https://t.me/alw_sh313")]
-        ]
-    )
-
-
-def gender_menu():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="👨 ذكر", callback_data="gender_male"),
-                InlineKeyboardButton(text="👩 أنثى", callback_data="gender_female")
-            ]
+            [InlineKeyboardButton(text="🔄 قصة جديدة", callback_data="new_story")]
         ]
     )
 
@@ -99,23 +68,15 @@ def gender_menu():
 def admin_panel():
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🚫 حظر", callback_data="ban")],
-            [InlineKeyboardButton(text="✅ إلغاء الحظر", callback_data="unban")],
-            [InlineKeyboardButton(text="📢 إذاعة", callback_data="broadcast")]
+            [InlineKeyboardButton(text="🚫 حظر مستخدم", callback_data="ban_mode")],
+            [InlineKeyboardButton(text="✅ إلغاء حظر", callback_data="unban_mode")],
+            [InlineKeyboardButton(text="📢 إذاعة", callback_data="broadcast_mode")]
         ]
     )
 
 
 # =========================
-# 🚨 فلتر منع المحظورين
-# =========================
-
-def is_blocked(uid: int):
-    return uid in blocked_users
-
-
-# =========================
-# 🎭 ترحيب احترافي (مطور)
+# 🎭 ترحيب (كما طلبت EXACT)
 # =========================
 
 @dp.message(CommandStart())
@@ -127,122 +88,75 @@ async def start(message: Message):
     )
 
     await message.answer(
-        "🎭━━━━━━━━━━━━━━━━━━━━━━🎭\n"
-        "✨ أهلاً بك في *عالم السيناريوهات التفاعلية* ✨\n\n"
-        "🎮 هنا أنت لست مجرد لاعب...\n"
-        "بل أنت صانع القصة ومحدد المصير.\n\n"
-        "🌍 عالم حيّ يتغير مع كل قرار تتخذه\n"
-        "⚔️ مغامرات، صراعات، وأحداث غير متوقعة\n"
-        "🧠 ذكاء اصطناعي يبني عالمك لحظة بلحظة\n\n"
-        "🔥 هل أنت مستعد لبدء رحلتك؟\n"
-        "اضغط (🎮 بدء القصة) وابدأ الآن!\n"
-        "🎭━━━━━━━━━━━━━━━━━━━━━━🎭",
+        "🎭━━━━━━━━━━━━━━━━━━🎭\n"
+        "✨ أهلاً بك في *عالم السيناريوهات التفاعلية* ✨\n"
+        "🎮 لعبة لا تعتمد على الحظ… بل على قراراتك أنت!\n\n"
+        "🌍 ستدخل عالماً حيّاً يتغير مع كل كلمة تكتبها\n"
+        "⚔️ ستواجه أحداثاً، مخاطر، ومصائر مجهولة\n"
+        "🎯 وكل قرار منك يصنع نهايتك الخاصة\n\n"
+        "🧠 هل أنت مستعد لتكون بطل القصة؟\n"
+        "🎮 اضغط (بدء القصة) وابدأ رحلتك الآن\n"
+        "🎭━━━━━━━━━━━━━━━━━━🎭",
         reply_markup=main_menu()
     )
 
 
 # =========================
-# 👑 لوحة الأدمن (FIX)
+# 👑 لوحة الأدمن
 # =========================
 
 @dp.message(F.text == "/admin")
 async def admin(message: Message):
-
     if message.from_user.id != ADMIN_ID:
         return
 
-    await message.answer("👑 لوحة التحكم:", reply_markup=admin_panel())
+    await message.answer("👑 لوحة الأدمن:", reply_markup=admin_panel())
 
 
 # =========================
-# 🎮 بدء القصة
+# 🚫 اختيار وضع الحظر
 # =========================
 
-@dp.callback_query(F.data == "start_story")
-async def start_story(callback: CallbackQuery):
-
-    if is_blocked(callback.from_user.id):
+@dp.callback_query(F.data == "ban_mode")
+async def ban_mode(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
         return
 
-    await callback.message.answer(
-        "👤 اختر جنس شخصيتك:",
-        reply_markup=gender_menu()
-    )
-
+    admin_state[ADMIN_ID] = "ban"
+    await callback.message.answer("أرسل ID المستخدم للحظر الآن")
     await callback.answer()
 
 
 # =========================
-# 👤 الجنس
+# ✅ إلغاء الحظر
 # =========================
 
-@dp.callback_query(F.data.startswith("gender_"))
-async def set_gender(callback: CallbackQuery):
-
-    uid = callback.from_user.id
-    gender = callback.data.replace("gender_", "")
-
-    user_gender[uid] = gender
-
-    await callback.message.answer(
-        "🎮 الآن اختر نوع القصة:",
-        reply_markup=story_modes()
-    )
-
-    await callback.answer()
-
-
-# =========================
-# 🎲 النمط
-# =========================
-
-@dp.callback_query(F.data.startswith("mode_"))
-async def set_mode(callback: CallbackQuery):
-
-    if is_blocked(callback.from_user.id):
+@dp.callback_query(F.data == "unban_mode")
+async def unban_mode(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
         return
 
-    uid = callback.from_user.id
-    mode = callback.data.replace("mode_", "")
-
-    modes_text = {
-        "calm": "هدوء",
-        "adventure": "مغامرة",
-        "fight": "قتال",
-        "horror": "رعب",
-        "fantasy": "فانتازيا",
-        "mystery": "غموض"
-    }
-
-    if mode == "random":
-        mode = random.choice(list(modes_text.keys()))
-
-    gender = user_gender.get(uid, "غير محدد")
-
-    user_sessions[uid] = [
-        f"جنس الشخصية: {gender}",
-        f"نوع القصة: {modes_text.get(mode)}",
-        "ابدأ القصة الآن"
-    ]
-
-    user_states[uid] = {"score": 0}
-
-    await callback.message.answer("⏳ جاري إنشاء القصة...")
-
-    response = await generate_story("\n".join(user_sessions[uid]))
-
-    user_sessions[uid].append(f"Bot: {response}")
-
-    await callback.message.answer(response, reply_markup=main_menu())
-    await callback.message.answer("🔊 جاري إرسال الصوت...")
-
-    asyncio.create_task(send_voice_later(response, uid, callback.message))
-
+    admin_state[ADMIN_ID] = "unban"
+    await callback.message.answer("أرسل ID المستخدم لإلغاء الحظر")
     await callback.answer()
 
 
 # =========================
-# 💬 التفاعل
+# 📢 الإذاعة (FIX الحقيقي)
+# =========================
+
+@dp.callback_query(F.data == "broadcast_mode")
+async def broadcast_mode(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return
+
+    admin_state[ADMIN_ID] = "broadcast"
+    await callback.message.answer("📢 أرسل الرسالة الآن للإذاعة لجميع المستخدمين")
+    await callback.answer()
+
+
+# =========================
+# 💬 معالجة الرسائل (FIX كامل للأدمن)
 # =========================
 
 @dp.message()
@@ -250,13 +164,42 @@ async def handle_message(message: Message):
 
     uid = message.from_user.id
 
-    # 🔥 FIX مهم: لا تسرق /admin أو أوامر
-    if message.text and message.text.startswith("/"):
+    # 🚫 تنفيذ أوامر الأدمن أولاً (IMPORTANT FIX)
+    if uid == ADMIN_ID and ADMIN_ID in admin_state:
+
+        mode = admin_state[ADMIN_ID]
+
+        # 🚫 حظر مستخدم
+        if mode == "ban":
+            blocked_users.add(int(message.text))
+            await message.answer("🚫 تم الحظر")
+            admin_state.pop(ADMIN_ID)
+            return
+
+        # ✅ إلغاء الحظر
+        if mode == "unban":
+            blocked_users.discard(int(message.text))
+            await message.answer("✅ تم إلغاء الحظر")
+            admin_state.pop(ADMIN_ID)
+            return
+
+        # 📢 إذاعة
+        if mode == "broadcast":
+            for user_id in user_sessions.keys():
+                try:
+                    await bot.send_message(user_id, f"📢 إعلان:\n\n{message.text}")
+                except:
+                    pass
+
+            await message.answer("✅ تم إرسال الإذاعة")
+            admin_state.pop(ADMIN_ID)
+            return
+
+    # 🚫 منع المحظورين
+    if uid in blocked_users:
         return
 
-    if is_blocked(uid):
-        return
-
+    # 🎮 بداية القصة
     if uid not in user_sessions:
         await message.answer("اضغط بدء القصة أولاً", reply_markup=main_menu())
         return
@@ -274,55 +217,11 @@ async def handle_message(message: Message):
 
 
 # =========================
-# 🚫 حظر
+# 🚫 الحظر (يدوي عبر النظام الجديد)
 # =========================
 
 @dp.callback_query(F.data == "ban")
 async def ban(callback: CallbackQuery):
-
     if callback.from_user.id != ADMIN_ID:
         return
-
-    blocked_users.add(callback.from_user.id)
-    await callback.message.answer("🚫 تم الحظر (نظام داخلي)")
-
-
-# =========================
-# ✅ إلغاء الحظر
-# =========================
-
-@dp.callback_query(F.data == "unban")
-async def unban(callback: CallbackQuery):
-
-    if callback.from_user.id != ADMIN_ID:
-        return
-
-    blocked_users.clear()
-    await callback.message.answer("✅ تم إلغاء الحظر")
-
-
-# =========================
-# 📢 إذاعة
-# =========================
-
-@dp.callback_query(F.data == "broadcast")
-async def broadcast(callback: CallbackQuery):
-
-    if callback.from_user.id != ADMIN_ID:
-        return
-
-    await callback.message.answer("أرسل الرسالة الآن")
-
-    @dp.message()
-    async def send(message: Message):
-
-        if message.from_user.id != ADMIN_ID:
-            return
-
-        for u in user_sessions.keys():
-            try:
-                await bot.send_message(u, f"📢 إعلان:\n\n{message.text}")
-            except:
-                pass
-
-        await message.answer("تم الإرسال")
+    await callback.answer()
