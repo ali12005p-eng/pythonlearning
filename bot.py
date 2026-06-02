@@ -14,10 +14,10 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # =========================
-# 👑 إشعار الدخول فقط (كما هو)
+# 👑 إشعار دخول (كما هو)
 # =========================
 
-ADMIN_ID = 8613698275  # غيّرها
+ADMIN_ID = 123456789  # غيّرها
 
 # =========================
 # 🎮 بيانات النظام (بدون تغيير)
@@ -29,19 +29,35 @@ user_modes = {}
 user_gender = {}
 
 # =========================
-# 🔊 الصوت (فقط تم التعديل هنا)
+# 🎬 NEW: المؤثر السينمائي فقط
+# =========================
+
+def cinematic_text(text: str) -> str:
+    # إضافة توقفات درامية لتحسين الإلقاء
+    text = text.replace(".", ". ..")
+    text = text.replace("،", "، ..")
+    text = text.replace("!", "! ..")
+    text = text.replace("؟", "؟ ..")
+    return text
+
+
+# =========================
+# 🔊 الصوت (فقط تعديل هنا)
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
-    # 🔥 صوت فصيح + أفخم
+    # صوت فصيح سعودي
     voice = "ar-SA-HamedNeural"
+
+    # 🎬 تطبيق المؤثر السينمائي
+    text = cinematic_text(text)
 
     communicate = edge_tts.Communicate(
         text,
         voice,
-        rate="-15%"  # بطء خفيف للفهم
+        rate="-15%"
     )
 
     await communicate.save(filename)
@@ -135,7 +151,7 @@ async def start(message: Message):
 
 
 # =========================
-# 🎮 باقي النظام (بدون تغيير)
+# 🎮 بدء القصة
 # =========================
 
 @dp.callback_query(F.data == "start_story")
@@ -148,6 +164,10 @@ async def start_story(callback: CallbackQuery):
 
     await callback.answer()
 
+
+# =========================
+# 👤 الجنس
+# =========================
 
 @dp.callback_query(F.data.startswith("gender_"))
 async def set_gender(callback: CallbackQuery):
@@ -164,6 +184,10 @@ async def set_gender(callback: CallbackQuery):
 
     await callback.answer()
 
+
+# =========================
+# 🎲 النمط
+# =========================
 
 @dp.callback_query(F.data.startswith("mode_"))
 async def set_mode(callback: CallbackQuery):
@@ -207,6 +231,10 @@ async def set_mode(callback: CallbackQuery):
     await callback.answer()
 
 
+# =========================
+# 🔄 قصة جديدة
+# =========================
+
 @dp.callback_query(F.data == "new_story")
 async def new_story(callback: CallbackQuery):
 
@@ -231,6 +259,10 @@ async def new_story(callback: CallbackQuery):
 
     await callback.answer()
 
+
+# =========================
+# 💬 التفاعل
+# =========================
 
 @dp.message()
 async def handle_message(message: Message):
