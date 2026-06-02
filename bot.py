@@ -2,9 +2,10 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 from aiogram.filters import CommandStart
 from ai import generate_story
-from gtts import gTTS
 import os
 import uuid
+import asyncio
+import edge_tts
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -17,12 +18,15 @@ user_sessions = {}
 # نظام الحالة (فوز/خسارة)
 user_states = {}
 
-# 🔊 تحويل النص إلى صوت
-def text_to_voice(text: str, user_id: int):
-    filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.ogg"
+# 🔊 صوت احترافي قوي
+async def text_to_voice(text: str, user_id: int):
+    filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
-    tts = gTTS(text=text, lang="ar")
-    tts.save(filename)
+    # 🔥 صوت رجالي قوي وحاد
+    voice = "ar-EG-ShakirNeural"
+
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(filename)
 
     return filename
 
@@ -94,7 +98,7 @@ async def start_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = text_to_voice(response, user_id)
+        voice_file = await text_to_voice(response, user_id)
 
         await callback.message.answer(
             response,
@@ -136,7 +140,7 @@ async def new_story(callback: CallbackQuery):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = text_to_voice(response, user_id)
+        voice_file = await text_to_voice(response, user_id)
 
         await callback.message.answer(
             response,
@@ -196,7 +200,7 @@ async def handle_message(message: Message):
 
         user_sessions[user_id].append(f"Bot: {response}")
 
-        voice_file = text_to_voice(response, user_id)
+        voice_file = await text_to_voice(response, user_id)
 
         await message.answer(
             response,
