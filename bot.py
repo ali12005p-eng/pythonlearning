@@ -18,7 +18,10 @@ user_sessions = {}
 # نظام الحالة (فوز/خسارة)
 user_states = {}
 
-# 🔊 توليد الصوت
+# أنماط القصة
+user_modes = {}
+
+# 🔊 الصوت
 async def text_to_voice(text: str, user_id: int):
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
@@ -30,7 +33,6 @@ async def text_to_voice(text: str, user_id: int):
     return filename
 
 
-# 🔥 إرسال الصوت بالخلفية
 async def send_voice_later(text, user_id, message):
     try:
         voice_file = await text_to_voice(text, user_id)
@@ -38,6 +40,29 @@ async def send_voice_later(text, user_id, message):
         os.remove(voice_file)
     except:
         pass
+
+
+# 🎮 قائمة الانطباع + العشوائي
+def story_modes():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🌿 هدوء", callback_data="mode_calm"),
+                InlineKeyboardButton(text="🧭 مغامرة", callback_data="mode_adventure")
+            ],
+            [
+                InlineKeyboardButton(text="⚔️ قتال", callback_data="mode_fight"),
+                InlineKeyboardButton(text="😱 رعب", callback_data="mode_horror")
+            ],
+            [
+                InlineKeyboardButton(text="🏰 فانتازيا", callback_data="mode_fantasy"),
+                InlineKeyboardButton(text="🔮 غموض", callback_data="mode_mystery")
+            ],
+            [
+                InlineKeyboardButton(text="🎲 قصة عشوائية", callback_data="mode_random")
+            ]
+        ]
+    )
 
 
 def main_menu():
@@ -72,25 +97,49 @@ async def start(message: Message):
         "👋 أهلاً بك أيها اللاعب...\n\n"
         "🌍 أنت على وشك دخول عالم مليء بالقرارات، المخاطر، والمفاجآت.\n"
         "كل كلمة تكتبها ستؤثر على مجرى القصة بشكل مباشر.\n\n"
-        "🎮 دورك:\n"
-        "ستكون أنت بطل القصة، وتتحكم بمصيرك بالكامل.\n\n"
-        "⚡ هدفك:\n"
-        "اتخذ القرارات الصحيحة، واصنع نهايتك الخاصة داخل هذا العالم.\n\n"
-        "📌 ملاحظة:\n"
-        "لا توجد إجابات صحيحة أو خاطئة... فقط نتائج مختلفة.\n\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "اضغط على (🎮 بدء القصة) لبدء مغامرتك الأولى.",
+        "🎮 اضغط بدء القصة لاختيار نوع العالم.",
         reply_markup=main_menu()
     )
 
 
+# 🎮 اختيار نوع القصة
 @dp.callback_query(F.data == "start_story")
 async def start_story(callback: CallbackQuery):
 
+    await callback.message.answer(
+        "🎮 اختر نوع القصة التي تريدها:",
+        reply_markup=story_modes()
+    )
+
+    await callback.answer()
+
+
+# 🎲 اختيار الانطباع
+@dp.callback_query(F.data.startswith("mode_"))
+async def set_mode(callback: CallbackQuery):
+
     user_id = callback.from_user.id
+    mode = callback.data.replace("mode_", "")
+
+    import random
+
+    modes_text = {
+        "calm": "قصة هادئة مليئة بالسلام والاستكشاف.",
+        "adventure": "مغامرة مليئة بالأحداث المشوقة.",
+        "fight": "عالم قتال وحروب وصراعات قوية.",
+        "horror": "عالم رعب مظلم وخطير.",
+        "fantasy": "عالم فانتازيا وسحر وملوك.",
+        "mystery": "عالم غامض مليء بالأسرار.",
+    }
+
+    if mode == "random":
+        mode = random.choice(list(modes_text.keys()))
+
+    user_modes[user_id] = mode
 
     user_sessions[user_id] = [
-        "ابدأ لعبة RPG جديدة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
+        f"ابدأ لعبة RPG بنوع: {modes_text.get(mode)}",
+        "عرّف العالم ودور اللاعب وابدأ أول مشهد حسب هذا الطابع."
     ]
 
     user_states[user_id] = {
@@ -98,12 +147,10 @@ async def start_story(callback: CallbackQuery):
         "score": 0
     }
 
-    await callback.message.edit_text("⏳ جاري إنشاء القصة...")
+    await callback.message.answer("⏳ جاري إنشاء القصة حسب اختيارك...")
 
     try:
-        response = await generate_story(
-            "\n".join(user_sessions[user_id])
-        )
+        response = await generate_story("\n".join(user_sessions[user_id]))
 
         user_sessions[user_id].append(f"Bot: {response}")
 
@@ -112,7 +159,6 @@ async def start_story(callback: CallbackQuery):
             reply_markup=main_menu()
         )
 
-        # 🔊 تنبيه قبل الصوت
         await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
         asyncio.create_task(
@@ -125,13 +171,14 @@ async def start_story(callback: CallbackQuery):
     await callback.answer()
 
 
+# 🔄 قصة جديدة
 @dp.callback_query(F.data == "new_story")
 async def new_story(callback: CallbackQuery):
 
     user_id = callback.from_user.id
 
     user_sessions[user_id] = [
-        "ابدأ لعبة RPG جديدة مختلفة تماماً عن السابقة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
+        "ابدأ لعبة RPG جديدة مختلفة تماماً عن السابقة."
     ]
 
     user_states[user_id] = {
@@ -142,9 +189,7 @@ async def new_story(callback: CallbackQuery):
     await callback.message.answer("🔄 تم إنشاء قصة جديدة...\n⏳ انتظر قليلاً.")
 
     try:
-        response = await generate_story(
-            "\n".join(user_sessions[user_id])
-        )
+        response = await generate_story("\n".join(user_sessions[user_id]))
 
         user_sessions[user_id].append(f"Bot: {response}")
 
@@ -153,7 +198,6 @@ async def new_story(callback: CallbackQuery):
             reply_markup=main_menu()
         )
 
-        # 🔊 تنبيه قبل الصوت
         await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
         asyncio.create_task(
@@ -166,6 +210,7 @@ async def new_story(callback: CallbackQuery):
     await callback.answer()
 
 
+# 💬 التفاعل داخل القصة
 @dp.message()
 async def handle_message(message: Message):
 
@@ -197,10 +242,10 @@ async def handle_message(message: Message):
             state["score"] -= 1
 
         if state["score"] >= 3:
-            response += "\n\n🏆 *تشعر أنك تقترب من أسطورة عظيمة داخل هذا العالم...*"
+            response += "\n\n🏆 *أنت تقترب من أسطورة عظيمة...*"
 
         if state["score"] <= -2:
-            response += "\n\n⚠️ *الأحداث أصبحت أصعب عليك، لكن القصة مستمرة...*"
+            response += "\n\n⚠️ *الأحداث أصبحت أصعب... لكن القصة مستمرة.*"
 
         user_states[user_id] = state
 
@@ -211,7 +256,6 @@ async def handle_message(message: Message):
             reply_markup=main_menu()
         )
 
-        # 🔊 تنبيه قبل الصوت
         await message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
         asyncio.create_task(
