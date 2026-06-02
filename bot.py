@@ -6,20 +6,17 @@ import os
 import uuid
 import asyncio
 import edge_tts
+import random
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# ذاكرة المستخدمين
 user_sessions = {}
-
-# نظام الحالة (فوز/خسارة)
 user_states = {}
-
-# أنماط القصة
 user_modes = {}
+
 
 # 🔊 الصوت
 async def text_to_voice(text: str, user_id: int):
@@ -42,7 +39,34 @@ async def send_voice_later(text, user_id, message):
         pass
 
 
-# 🎮 قائمة الانطباع + العشوائي
+# ✨ تشكيل أقوى للنص (نسخة مطورة)
+def full_diacritics(text: str) -> str:
+    replacements = {
+        "انت": "أَنْتَ",
+        "أنت": "أَنْتَ",
+        "قصة": "قِصَّةٌ",
+        "العالم": "الْعَالَمُ",
+        "عالم": "عَالَمٌ",
+        "الملك": "الْمَلِكُ",
+        "ملك": "مَلِكٌ",
+        "سيف": "سَيْفٌ",
+        "مغامرة": "مُغَامَرَةٌ",
+        "رعب": "رُعْبٌ",
+        "قرار": "قَرَارٌ",
+        "أحداث": "أَحْدَاثٌ",
+        "بطل": "بَطَلٌ",
+        "قوي": "قَوِيٌّ",
+        "غامض": "غَامِضٌ"
+    }
+
+    # محاولة تحسين تشكيل الجمل
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+
+    return text
+
+
+# 🎮 اختيار الأنماط
 def story_modes():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -69,16 +93,10 @@ def main_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text="🎮 بدء القصة",
-                    callback_data="start_story"
-                )
+                InlineKeyboardButton(text="🎮 بدء القصة", callback_data="start_story")
             ],
             [
-                InlineKeyboardButton(
-                    text="🔄 قصة جديدة",
-                    callback_data="new_story"
-                )
+                InlineKeyboardButton(text="🔄 قصة جديدة", callback_data="new_story")
             ],
             [
                 InlineKeyboardButton(
@@ -90,19 +108,24 @@ def main_menu():
     )
 
 
+# 🎭 ترحيب أفخم (جديد)
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer(
-        "🎭 ━━━ لعبة السيناريو التفاعلية ━━━ 🎭\n\n"
-        "👋 أهلاً بك أيها اللاعب...\n\n"
-        "🌍 أنت على وشك دخول عالم مليء بالقرارات، المخاطر، والمفاجآت.\n"
-        "كل كلمة تكتبها ستؤثر على مجرى القصة بشكل مباشر.\n\n"
-        "🎮 اضغط بدء القصة لاختيار نوع العالم.",
+        "🎭━━━━━━━━━━━━━━━━━━🎭\n"
+        "✨ أهلاً بك في *عالم السيناريوهات التفاعلية* ✨\n"
+        "🎮 لعبة لا تعتمد على الحظ… بل على قراراتك أنت!\n\n"
+        "🌍 ستدخل عالماً حيّاً يتغير مع كل كلمة تكتبها\n"
+        "⚔️ ستواجه أحداثاً، مخاطر، ومصائر مجهولة\n"
+        "🎯 وكل قرار منك يصنع نهايتك الخاصة\n\n"
+        "🧠 هل أنت مستعد لتكون بطل القصة؟\n"
+        "🎮 اضغط (بدء القصة) وابدأ رحلتك الآن\n"
+        "🎭━━━━━━━━━━━━━━━━━━🎭",
         reply_markup=main_menu()
     )
 
 
-# 🎮 اختيار نوع القصة
+# 🎮 بدء القصة
 @dp.callback_query(F.data == "start_story")
 async def start_story(callback: CallbackQuery):
 
@@ -114,14 +137,12 @@ async def start_story(callback: CallbackQuery):
     await callback.answer()
 
 
-# 🎲 اختيار الانطباع
+# 🎲 اختيار النمط
 @dp.callback_query(F.data.startswith("mode_"))
 async def set_mode(callback: CallbackQuery):
 
     user_id = callback.from_user.id
     mode = callback.data.replace("mode_", "")
-
-    import random
 
     modes_text = {
         "calm": "قصة هادئة مليئة بالسلام والاستكشاف.",
@@ -142,28 +163,21 @@ async def set_mode(callback: CallbackQuery):
         "عرّف العالم ودور اللاعب وابدأ أول مشهد حسب هذا الطابع."
     ]
 
-    user_states[user_id] = {
-        "status": "playing",
-        "score": 0
-    }
+    user_states[user_id] = {"status": "playing", "score": 0}
 
-    await callback.message.answer("⏳ جاري إنشاء القصة حسب اختيارك...")
+    await callback.message.answer("⏳ جاري إنشاء القصة...")
 
     try:
         response = await generate_story("\n".join(user_sessions[user_id]))
 
+        response = full_diacritics(response)
+
         user_sessions[user_id].append(f"Bot: {response}")
 
-        await callback.message.answer(
-            response,
-            reply_markup=main_menu()
-        )
-
+        await callback.message.answer(response, reply_markup=main_menu())
         await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
-        asyncio.create_task(
-            send_voice_later(response, user_id, callback.message)
-        )
+        asyncio.create_task(send_voice_later(response, user_id, callback.message))
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -181,28 +195,21 @@ async def new_story(callback: CallbackQuery):
         "ابدأ لعبة RPG جديدة مختلفة تماماً عن السابقة."
     ]
 
-    user_states[user_id] = {
-        "status": "playing",
-        "score": 0
-    }
+    user_states[user_id] = {"status": "playing", "score": 0}
 
     await callback.message.answer("🔄 تم إنشاء قصة جديدة...\n⏳ انتظر قليلاً.")
 
     try:
         response = await generate_story("\n".join(user_sessions[user_id]))
 
+        response = full_diacritics(response)
+
         user_sessions[user_id].append(f"Bot: {response}")
 
-        await callback.message.answer(
-            response,
-            reply_markup=main_menu()
-        )
-
+        await callback.message.answer(response, reply_markup=main_menu())
         await callback.message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
-        asyncio.create_task(
-            send_voice_later(response, user_id, callback.message)
-        )
+        asyncio.create_task(send_voice_later(response, user_id, callback.message))
 
     except Exception as e:
         await callback.message.answer(f"❌ خطأ: {e}")
@@ -219,7 +226,10 @@ async def handle_message(message: Message):
 
     if user_id not in user_sessions:
         await message.answer(
-            "🎮 اضغط على (بدء القصة) أولاً.",
+            "🎭━━━━━━━━━━━━━━━━━━🎭\n"
+            "✨ أهلاً بك في *عالم السيناريوهات التفاعلية* ✨\n"
+            "🎮 اضغط (بدء القصة) لتبدأ مغامرتك\n"
+            "🎭━━━━━━━━━━━━━━━━━━🎭",
             reply_markup=main_menu()
         )
         return
@@ -227,11 +237,12 @@ async def handle_message(message: Message):
     user_sessions[user_id].append(f"User: {user_text}")
 
     history = "\n".join(user_sessions[user_id])
-
     state = user_states.get(user_id, {"status": "playing", "score": 0})
 
     try:
         response = await generate_story(history)
+
+        response = full_diacritics(response)
 
         text_lower = response.lower()
 
@@ -241,26 +252,13 @@ async def handle_message(message: Message):
         if "خسرت" in text_lower or "فشل" in text_lower:
             state["score"] -= 1
 
-        if state["score"] >= 3:
-            response += "\n\n🏆 *أنت تقترب من أسطورة عظيمة...*"
-
-        if state["score"] <= -2:
-            response += "\n\n⚠️ *الأحداث أصبحت أصعب... لكن القصة مستمرة.*"
-
         user_states[user_id] = state
-
         user_sessions[user_id].append(f"Bot: {response}")
 
-        await message.answer(
-            response,
-            reply_markup=main_menu()
-        )
-
+        await message.answer(response, reply_markup=main_menu())
         await message.answer("🔊 جاري إرسال القصة بصوت... 🎧")
 
-        asyncio.create_task(
-            send_voice_later(response, user_id, message)
-        )
+        asyncio.create_task(send_voice_later(response, user_id, message))
 
     except Exception as e:
         await message.answer(f"❌ خطأ: {e}")
