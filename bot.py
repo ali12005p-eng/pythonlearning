@@ -12,6 +12,9 @@ dp = Dispatcher()
 # ذاكرة المستخدمين
 user_sessions = {}
 
+# نظام الحالة (فوز/خسارة)
+user_states = {}
+
 def main_menu():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -25,6 +28,12 @@ def main_menu():
                 InlineKeyboardButton(
                     text="🔄 قصة جديدة",
                     callback_data="new_story"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="👤 Developer: Ali Hussein",
+                    url="https://t.me/alw_sh313"
                 )
             ]
         ]
@@ -43,14 +52,16 @@ async def start_story(callback: CallbackQuery):
 
     user_id = callback.from_user.id
 
-    # 🔥 بداية قصة مع شرح العالم ودور اللاعب
     user_sessions[user_id] = [
         "ابدأ لعبة RPG جديدة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
     ]
 
-    await callback.message.edit_text(
-        "⏳ جاري إنشاء القصة..."
-    )
+    user_states[user_id] = {
+        "status": "playing",
+        "score": 0
+    }
+
+    await callback.message.edit_text("⏳ جاري إنشاء القصة...")
 
     try:
         response = await generate_story(
@@ -65,25 +76,26 @@ async def start_story(callback: CallbackQuery):
         )
 
     except Exception as e:
-        await callback.message.answer(
-            f"❌ خطأ: {e}"
-        )
+        await callback.message.answer(f"❌ خطأ: {e}")
 
     await callback.answer()
+
 
 @dp.callback_query(F.data == "new_story")
 async def new_story(callback: CallbackQuery):
 
     user_id = callback.from_user.id
 
-    # 🔥 قصة جديدة مع نفس الفكرة (شرح + بداية)
     user_sessions[user_id] = [
         "ابدأ لعبة RPG جديدة مختلفة تماماً عن السابقة واشرح العالم ودور اللاعب وهدفه ثم ابدأ أول مشهد."
     ]
 
-    await callback.message.answer(
-        "🔄 تم إنشاء قصة جديدة...\n⏳ انتظر قليلاً."
-    )
+    user_states[user_id] = {
+        "status": "playing",
+        "score": 0
+    }
+
+    await callback.message.answer("🔄 تم إنشاء قصة جديدة...\n⏳ انتظر قليلاً.")
 
     try:
         response = await generate_story(
@@ -98,11 +110,10 @@ async def new_story(callback: CallbackQuery):
         )
 
     except Exception as e:
-        await callback.message.answer(
-            f"❌ خطأ: {e}"
-        )
+        await callback.message.answer(f"❌ خطأ: {e}")
 
     await callback.answer()
+
 
 @dp.message()
 async def handle_message(message: Message):
@@ -117,13 +128,31 @@ async def handle_message(message: Message):
         )
         return
 
-    # حفظ تفاعل اللاعب
     user_sessions[user_id].append(f"User: {user_text}")
 
     history = "\n".join(user_sessions[user_id])
 
+    state = user_states.get(user_id, {"status": "playing", "score": 0})
+
     try:
         response = await generate_story(history)
+
+        # 🎯 تحليل الفوز والخسارة بدون إنهاء القصة
+        text_lower = response.lower()
+
+        if "نجحت" in text_lower or "فزت" in text_lower:
+            state["score"] += 1
+
+        if "خسرت" in text_lower or "فشل" in text_lower:
+            state["score"] -= 1
+
+        if state["score"] >= 3:
+            response += "\n\n🏆 *تشعر أنك تقترب من أسطورة عظيمة داخل هذا العالم...*"
+
+        if state["score"] <= -2:
+            response += "\n\n⚠️ *الأحداث أصبحت أصعب عليك، لكن القصة مستمرة...*"
+
+        user_states[user_id] = state
 
         user_sessions[user_id].append(f"Bot: {response}")
 
@@ -133,6 +162,4 @@ async def handle_message(message: Message):
         )
 
     except Exception as e:
-        await message.answer(
-            f"❌ خطأ: {e}"
-        )
+        await message.answer(f"❌ خطأ: {e}")
