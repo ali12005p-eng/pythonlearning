@@ -271,7 +271,7 @@ async def set_mode(callback: CallbackQuery):
     ]
 
     user_states[uid] = {"score": 0}
-    if uid not in user_xp:
+if uid not in user_xp:
     user_xp[uid] = 0
 
     if uid not in user_level:
