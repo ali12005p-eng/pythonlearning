@@ -131,6 +131,31 @@ async def send_voice_later(text, user_id, message):
     except:
         pass
 
+# =========================
+# 👋 صوت الترحيب
+# =========================
+
+async def send_welcome_voice(message):
+    try:
+        filename = f"/tmp/welcome_{uuid.uuid4().hex}.mp3"
+
+        communicate = edge_tts.Communicate(
+            "مرحباً بك في عالم السيناريوهات التفاعلية. هنا تبدأ رحلتك الخاصة، حيث تصنع قراراتك مصيرك بنفسك. نتمنى لك مغامرة ممتعة ومليئة بالمفاجآت.",
+            "ar-SA-HamedNeural",
+            rate="-12%"
+        )
+
+        await communicate.save(filename)
+
+        await message.answer_voice(
+            FSInputFile(filename)
+        )
+
+        os.remove(filename)
+
+    except:
+        pass
+
 
 # =========================
 # 🎮 القوائم
@@ -206,6 +231,9 @@ async def start(message: Message):
         "اضغط (بدء القصة) الآن وابدأ مغامرتك\n"
         "━━━━━━━━━━━━━━━━━━",
         reply_markup=main_menu()
+    )
+    asyncio.create_task(
+        send_welcome_voice(message)
     )
 
 
