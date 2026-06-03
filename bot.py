@@ -14,13 +14,13 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # =========================
-# 👑 إشعار دخول (بدون تغيير)
+# 👑 إشعار دخول
 # =========================
 
 ADMIN_ID = 8613698275
 
 # =========================
-# 🎮 بيانات النظام (بدون تغيير)
+# 🎮 بيانات النظام
 # =========================
 
 user_sessions = {}
@@ -31,7 +31,7 @@ user_xp = {}
 user_level = {}
 
 # =========================
-# 🎬 مؤثر سينمائي (بدون تغيير)
+# 🎬 مؤثر سينمائي
 # =========================
 
 def cinematic_text(text: str) -> str:
@@ -43,7 +43,7 @@ def cinematic_text(text: str) -> str:
 
 
 # =========================
-# 🎭 تحديد المزاج (بدون تغيير)
+# 🎭 تحديد المزاج
 # =========================
 
 def detect_mood(text: str) -> str:
@@ -65,7 +65,7 @@ def detect_mood(text: str) -> str:
 
 
 # =========================
-# 🎼 NEW: الموسيقى السينمائية
+# 🎼 الموسيقى
 # =========================
 
 def get_music_by_mood(mood: str) -> str:
@@ -76,7 +76,6 @@ def get_music_by_mood(mood: str) -> str:
         "mystery": "https://example.com/music/mystery.mp3",
         "calm": "https://example.com/music/calm.mp3"
     }
-
     return music_map.get(mood, music_map["calm"])
 
 
@@ -94,7 +93,7 @@ async def send_music(text, message):
 
 
 # =========================
-# 🔊 الصوت (بدون تغيير جوهري)
+# 🔊 الصوت
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
@@ -103,7 +102,6 @@ async def text_to_voice(text: str, user_id: int):
     mood = detect_mood(text)
 
     voice = "ar-SA-HamedNeural"
-
     rate = "-15%"
 
     if mood == "fight":
@@ -114,8 +112,6 @@ async def text_to_voice(text: str, user_id: int):
         rate = "-20%"
     elif mood == "adventure":
         rate = "-10%"
-    else:
-        rate = "-15%"
 
     communicate = edge_tts.Communicate(
         cinematic_text(text),
@@ -124,7 +120,6 @@ async def text_to_voice(text: str, user_id: int):
     )
 
     await communicate.save(filename)
-
     return filename
 
 
@@ -138,7 +133,7 @@ async def send_voice_later(text, user_id, message):
 
 
 # =========================
-# 🎮 القوائم (بدون تغيير)
+# 🎮 القوائم
 # =========================
 
 def story_modes():
@@ -185,7 +180,7 @@ def gender_menu():
 
 
 # =========================
-# 🎭 الترحيب (بدون تغيير)
+# 🎭 start
 # =========================
 
 @dp.message(CommandStart())
@@ -201,13 +196,8 @@ async def start(message: Message):
 
     await message.answer(
         "🎭━━━━━━━━━━━━━━━━━━🎭\n"
-        "✨ أهلاً بك في *عالم السيناريوهات التفاعلية* ✨\n"
-        "🎮 لعبة لا تعتمد على الحظ… بل على قراراتك أنت!\n\n"
-        "🌍 ستدخل عالماً حيّاً يتغير مع كل كلمة تكتبها\n"
-        "⚔️ ستواجه أحداثاً، مخاطر، ومصائر مجهولة\n"
-        "🎯 وكل قرار منك يصنع نهايتك الخاصة\n\n"
-        "🧠 هل أنت مستعد لتكون بطل القصة؟\n"
-        "🎮 اضغط (بدء القصة) وابدأ رحلتك الآن\n"
+        "✨ أهلاً بك في عالم السيناريوهات التفاعلية ✨\n"
+        "🎮 اضغط بدء القصة للبدء\n"
         "🎭━━━━━━━━━━━━━━━━━━🎭",
         reply_markup=main_menu()
     )
@@ -219,8 +209,7 @@ async def start(message: Message):
 
 @dp.callback_query(F.data == "start_story")
 async def start_story(callback: CallbackQuery):
-
-    await callback.message.answer("👤 اختر جنس شخصيتك:", reply_markup=gender_menu())
+    await callback.message.answer("👤 اختر الجنس:", reply_markup=gender_menu())
     await callback.answer()
 
 
@@ -267,15 +256,16 @@ async def set_mode(callback: CallbackQuery):
     user_sessions[uid] = [
         f"جنس الشخصية: {gender}",
         f"نوع القصة: {modes_text.get(mode)}",
-        "ابدأ القصة وعرّف العالم ودور اللاعب"
+        "ابدأ القصة"
     ]
 
     user_states[uid] = {"score": 0}
-if uid not in user_xp:
-    user_xp[uid] = 0
+
+    if uid not in user_xp:
+        user_xp[uid] = 0
 
     if uid not in user_level:
-    user_level[uid] = 1
+        user_level[uid] = 1
 
     await callback.message.answer("⏳ جاري إنشاء القصة...")
 
@@ -284,7 +274,7 @@ if uid not in user_xp:
     user_sessions[uid].append(f"Bot: {response}")
 
     await callback.message.answer(response, reply_markup=main_menu())
-    await callback.message.answer("🔊 جاري إرسال الصوت...")
+    await callback.message.answer("🔊 جاري الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, callback.message))
     asyncio.create_task(send_music(response, callback.message))
@@ -301,17 +291,17 @@ async def new_story(callback: CallbackQuery):
 
     uid = callback.from_user.id
 
-    user_sessions[uid] = ["ابدأ قصة جديدة مختلفة تماماً"]
+    user_sessions[uid] = ["ابدأ قصة جديدة"]
     user_states[uid] = {"score": 0}
 
-    await callback.message.answer("🔄 جاري إنشاء قصة جديدة...")
+    await callback.message.answer("🔄 جاري القصة...")
 
     response = await generate_story("\n".join(user_sessions[uid]))
 
     user_sessions[uid].append(f"Bot: {response}")
 
     await callback.message.answer(response, reply_markup=main_menu())
-    await callback.message.answer("🔊 جاري إرسال الصوت...")
+    await callback.message.answer("🔊 جاري الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, callback.message))
     asyncio.create_task(send_music(response, callback.message))
@@ -330,27 +320,28 @@ async def handle_message(message: Message):
     text = message.text
 
     if uid not in user_sessions:
-        await message.answer("اضغط بدء القصة أولاً", reply_markup=main_menu())
+        await message.answer("اضغط بدء القصة", reply_markup=main_menu())
         return
 
     user_sessions[uid].append(f"User: {text}")
-    user_xp[uid] += random.randint(5, 15)
 
-level_up_text = ""
+    # XP
+    user_xp[uid] = user_xp.get(uid, 0) + random.randint(5, 15)
 
-new_level = (user_xp[uid] // 100) + 1
+    level_up_text = ""
 
-if new_level > user_level[uid]:
-    user_level[uid] = new_level
+    new_level = (user_xp[uid] // 100) + 1
 
-    level_up_text = (
-        f"\n\n🎉 ترقية مستوى!"
-        f"\n⭐ المستوى الحالي: {new_level}"
-    )
+    if uid not in user_level:
+        user_level[uid] = 1
+
+    if new_level > user_level[uid]:
+        user_level[uid] = new_level
+        level_up_text = f"\n\n🎉 ترقية مستوى!\n⭐ المستوى: {new_level}"
 
     response = await generate_story("\n".join(user_sessions[uid]))
-    stats = f"""
 
+    stats = f"""
 ━━━━━━━━━━━━━━
 ⭐ المستوى: {user_level[uid]}
 ✨ الخبرة: {user_xp[uid]} XP
@@ -359,12 +350,12 @@ if new_level > user_level[uid]:
 
     user_sessions[uid].append(f"Bot: {response}")
 
-    await message.answer(response, reply_markup=main_menu())
     await message.answer(
-    response + level_up_text + stats,
-    reply_markup=main_menu()
-)
-    await message.answer("🔊 جاري إرسال الصوت...")
+        response + level_up_text + stats,
+        reply_markup=main_menu()
+    )
+
+    await message.answer("🔊 جاري الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, message))
     asyncio.create_task(send_music(response, message))
