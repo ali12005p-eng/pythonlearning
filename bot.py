@@ -27,6 +27,8 @@ user_sessions = {}
 user_states = {}
 user_modes = {}
 user_gender = {}
+user_xp = {}
+user_level = {}
 
 # =========================
 # 🎬 مؤثر سينمائي (بدون تغيير)
@@ -269,6 +271,11 @@ async def set_mode(callback: CallbackQuery):
     ]
 
     user_states[uid] = {"score": 0}
+    if uid not in user_xp:
+    user_xp[uid] = 0
+
+    if uid not in user_level:
+    user_level[uid] = 1
 
     await callback.message.answer("⏳ جاري إنشاء القصة...")
 
@@ -327,12 +334,36 @@ async def handle_message(message: Message):
         return
 
     user_sessions[uid].append(f"User: {text}")
+    user_xp[uid] += random.randint(5, 15)
+
+level_up_text = ""
+
+new_level = (user_xp[uid] // 100) + 1
+
+if new_level > user_level[uid]:
+    user_level[uid] = new_level
+
+    level_up_text = (
+        f"\n\n🎉 ترقية مستوى!"
+        f"\n⭐ المستوى الحالي: {new_level}"
+    )
 
     response = await generate_story("\n".join(user_sessions[uid]))
+    stats = f"""
+
+━━━━━━━━━━━━━━
+⭐ المستوى: {user_level[uid]}
+✨ الخبرة: {user_xp[uid]} XP
+━━━━━━━━━━━━━━
+"""
 
     user_sessions[uid].append(f"Bot: {response}")
 
     await message.answer(response, reply_markup=main_menu())
+    await message.answer(
+    response + level_up_text + stats,
+    reply_markup=main_menu()
+)
     await message.answer("🔊 جاري إرسال الصوت...")
 
     asyncio.create_task(send_voice_later(response, uid, message))
