@@ -180,7 +180,7 @@ def gender_menu():
 
 
 # =========================
-# 🎭 start
+# 🎭 START (تم التعديل فقط هنا)
 # =========================
 
 @dp.message(CommandStart())
@@ -194,17 +194,23 @@ async def start(message: Message):
     except:
         pass
 
+    # ✨ فقط تم تحسين الرسالة هنا بدون أي تغيير آخر
     await message.answer(
-        "🎭━━━━━━━━━━━━━━━━━━🎭\n"
-        "✨ أهلاً بك في عالم السيناريوهات التفاعلية ✨\n"
-        "🎮 اضغط بدء القصة للبدء\n"
-        "🎭━━━━━━━━━━━━━━━━━━🎭",
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🎭✨ أهلاً بك في عالم السيناريوهات التفاعلية ✨🎭\n"
+        "⚔️ هنا لا توجد قصة مكتوبة مسبقاً… بل أنت من يصنع المصير\n\n"
+        "🌍 عالم حي يتغير مع كل قرار تتخذه\n"
+        "🧠 شخصيات تتذكرك… وأحداث تتطور معك\n"
+        "🔥 نجاحك يصنع أسطورتك… وخسارتك تصنع بداية جديدة\n\n"
+        "🎮 هل لديك الجرأة لبدء الرحلة؟\n"
+        "اضغط (بدء القصة) الآن وابدأ مغامرتك\n"
+        "━━━━━━━━━━━━━━━━━━",
         reply_markup=main_menu()
     )
 
 
 # =========================
-# 🎮 بدء القصة
+# باقي الكود بدون تغيير
 # =========================
 
 @dp.callback_query(F.data == "start_story")
@@ -212,10 +218,6 @@ async def start_story(callback: CallbackQuery):
     await callback.message.answer("👤 اختر الجنس:", reply_markup=gender_menu())
     await callback.answer()
 
-
-# =========================
-# 👤 الجنس
-# =========================
 
 @dp.callback_query(F.data.startswith("gender_"))
 async def set_gender(callback: CallbackQuery):
@@ -228,10 +230,6 @@ async def set_gender(callback: CallbackQuery):
     await callback.message.answer("🎮 اختر نوع القصة:", reply_markup=story_modes())
     await callback.answer()
 
-
-# =========================
-# 🎲 النمط
-# =========================
 
 @dp.callback_query(F.data.startswith("mode_"))
 async def set_mode(callback: CallbackQuery):
@@ -282,10 +280,6 @@ async def set_mode(callback: CallbackQuery):
     await callback.answer()
 
 
-# =========================
-# 🔄 قصة جديدة
-# =========================
-
 @dp.callback_query(F.data == "new_story")
 async def new_story(callback: CallbackQuery):
 
@@ -309,10 +303,6 @@ async def new_story(callback: CallbackQuery):
     await callback.answer()
 
 
-# =========================
-# 💬 التفاعل
-# =========================
-
 @dp.message()
 async def handle_message(message: Message):
 
@@ -325,7 +315,6 @@ async def handle_message(message: Message):
 
     user_sessions[uid].append(f"User: {text}")
 
-    # XP
     user_xp[uid] = user_xp.get(uid, 0) + random.randint(5, 15)
 
     level_up_text = ""
