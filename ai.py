@@ -1,9 +1,27 @@
 import os
+import re
 from groq import Groq
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 client = Groq(api_key=GROQ_API_KEY)
+
+
+# =========================
+# 🧹 فلترة اللغة العربية فقط (إضافة جديدة)
+# =========================
+
+def clean_arabic_text(text: str) -> str:
+    # حذف الحروف الإنجليزية
+    text = re.sub(r"[A-Za-z]+", "", text)
+
+    # حذف الرموز الغريبة مع الإبقاء على العربية والعلامات الأساسية
+    text = re.sub(r"[^\u0600-\u06FF0-9\s\.\،\!\؟\:\-\(\)]", "", text)
+
+    # إزالة التكرار الزائد للمسافات
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 
 async def generate_story(history: str):
@@ -98,4 +116,11 @@ async def generate_story(history: str):
         max_tokens=1400
     )
 
-    return completion.choices[0].message.content
+    # =========================
+    # 🧹 تطبيق الفلترة (إضافة فقط)
+    # =========================
+
+    raw_text = completion.choices[0].message.content
+    cleaned_text = clean_arabic_text(raw_text)
+
+    return cleaned_text
