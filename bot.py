@@ -101,8 +101,8 @@ async def text_to_voice(text: str, user_id: int):
 
     mood = detect_mood(text)
 
-    voice = "ar-SA-HamedNeural"
-    rate = "-15%"
+    voice = "ar-AE-HamedNeural"
+    rate = "-20%"
 
     if mood == "fight":
         rate = "+5%"
