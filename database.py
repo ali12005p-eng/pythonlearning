@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 DB_NAME = "game.db"
 
@@ -17,9 +18,16 @@ def init_db():
         character_name TEXT NOT NULL,
         gender TEXT NOT NULL,
         story_type TEXT NOT NULL,
+
         level INTEGER DEFAULT 1,
         xp INTEGER DEFAULT 0,
-        history TEXT DEFAULT ''
+
+        story_summary TEXT DEFAULT '',
+        history TEXT DEFAULT '',
+
+        voice_enabled INTEGER DEFAULT 1,
+
+        created_at TEXT
     )
     """)
 
@@ -32,7 +40,7 @@ def user_exists(user_id: int):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT user_id FROM users WHERE user_id = ?",
+        "SELECT user_id FROM users WHERE user_id=?",
         (user_id,)
     )
 
@@ -57,14 +65,16 @@ def create_user(
         user_id,
         character_name,
         gender,
-        story_type
+        story_type,
+        created_at
     )
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?)
     """, (
         user_id,
         character_name,
         gender,
-        story_type
+        story_type,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
     conn.commit()
@@ -76,14 +86,7 @@ def get_user(user_id: int):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT
-        user_id,
-        character_name,
-        gender,
-        story_type,
-        level,
-        xp,
-        history
+    SELECT *
     FROM users
     WHERE user_id = ?
     """, (user_id,))
@@ -112,6 +115,23 @@ def update_history(user_id: int, history: str):
     conn.close()
 
 
+def update_summary(user_id: int, summary: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET story_summary = ?
+    WHERE user_id = ?
+    """, (
+        summary,
+        user_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
 def update_xp_level(user_id: int, xp: int, level: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -123,6 +143,23 @@ def update_xp_level(user_id: int, xp: int, level: int):
     """, (
         xp,
         level,
+        user_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def set_voice(user_id: int, enabled: bool):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET voice_enabled = ?
+    WHERE user_id = ?
+    """, (
+        1 if enabled else 0,
         user_id
     ))
 
