@@ -1,7 +1,28 @@
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
+from aiogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery,
+    FSInputFile
+)
 from aiogram.filters import CommandStart
-from ai import generate_story
+
+from ai import generate_story, generate_summary
+
+from database import (
+    init_db,
+    user_exists,
+    create_user,
+    get_user,
+    update_history,
+    update_summary,
+    update_xp_level,
+    get_message_count,
+    update_message_count,
+    set_voice
+)
+
 import os
 import uuid
 import asyncio
@@ -13,25 +34,22 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# =========================
-# 👑 إشعار دخول
-# =========================
+init_db()
 
 ADMIN_ID = 8613698275
 
+
 # =========================
-# 🎮 بيانات النظام
+# حفظ مؤقت أثناء إنشاء الشخصية
 # =========================
 
-user_sessions = {}
-user_states = {}
-user_modes = {}
 user_gender = {}
-user_xp = {}
-user_level = {}
+user_story_type = {}
+waiting_name = {}
+
 
 # =========================
-# 🎬 مؤثر سينمائي
+# مؤثر سينمائي
 # =========================
 
 def cinematic_text(text: str) -> str:
@@ -43,10 +61,11 @@ def cinematic_text(text: str) -> str:
 
 
 # =========================
-# 🎭 تحديد المزاج
+# تحديد المزاج
 # =========================
 
 def detect_mood(text: str) -> str:
+
     text = text.lower()
 
     if "قتل" in text or "سيف" in text or "هجوم" in text:
@@ -55,7 +74,7 @@ def detect_mood(text: str) -> str:
     if "خوف" in text or "ظلام" in text or "صرخة" in text:
         return "horror"
 
-    if "رحلة" in text or "طريق" in text or "سفر" in text:
+    if "رحلة" in text or "سفر" in text:
         return "adventure"
 
     if "سر" in text or "غامض" in text:
@@ -65,51 +84,28 @@ def detect_mood(text: str) -> str:
 
 
 # =========================
-# 🎼 الموسيقى
-# =========================
-
-def get_music_by_mood(mood: str) -> str:
-    music_map = {
-        "fight": "https://example.com/music/fight.mp3",
-        "horror": "https://example.com/music/horror.mp3",
-        "adventure": "https://example.com/music/adventure.mp3",
-        "mystery": "https://example.com/music/mystery.mp3",
-        "calm": "https://example.com/music/calm.mp3"
-    }
-    return music_map.get(mood, music_map["calm"])
-
-
-async def send_music(text, message):
-    try:
-        mood = detect_mood(text)
-        music_url = get_music_by_mood(mood)
-
-        await message.answer_audio(
-            audio=music_url,
-            caption="🎬 موسيقى سينمائية حسب المشهد"
-        )
-    except:
-        pass
-
-
-# =========================
-# 🔊 الصوت
+# صوت
 # =========================
 
 async def text_to_voice(text: str, user_id: int):
+
     filename = f"/tmp/{user_id}_{uuid.uuid4().hex}.mp3"
 
     mood = detect_mood(text)
 
     voice = "ar-SA-HamedNeural"
+
     rate = "-15%"
 
     if mood == "fight":
         rate = "+5%"
+
     elif mood == "horror":
         rate = "-25%"
+
     elif mood == "mystery":
         rate = "-20%"
+
     elif mood == "adventure":
         rate = "-10%"
 
@@ -120,67 +116,132 @@ async def text_to_voice(text: str, user_id: int):
     )
 
     await communicate.save(filename)
+
     return filename
 
 
 async def send_voice_later(text, user_id, message):
+
     try:
+
+        user = get_user(user_id)
+
+        if not user:
+            return
+
+        voice_enabled = bool(user[8])
+
+        if not voice_enabled:
+            return
+
         file = await text_to_voice(text, user_id)
-        await message.answer_voice(FSInputFile(file))
+
+        await message.answer_voice(
+            FSInputFile(file)
+        )
+
         os.remove(file)
+
     except:
         pass
 
 
 # =========================
-# 🎮 القوائم
+# القوائم
 # =========================
 
-def story_modes():
+def gender_menu():
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="🌿 هدوء", callback_data="mode_calm"),
-                InlineKeyboardButton(text="🧭 مغامرة", callback_data="mode_adventure")
+                InlineKeyboardButton(
+                    text="👨 ذكر",
+                    callback_data="gender_male"
+                ),
+                InlineKeyboardButton(
+                    text="👩 أنثى",
+                    callback_data="gender_female"
+                )
+            ]
+        ]
+    )
+
+
+def story_modes():
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🌿 هدوء",
+                    callback_data="mode_calm"
+                ),
+                InlineKeyboardButton(
+                    text="🧭 مغامرة",
+                    callback_data="mode_adventure"
+                )
             ],
             [
-                InlineKeyboardButton(text="⚔️ قتال", callback_data="mode_fight"),
-                InlineKeyboardButton(text="😱 رعب", callback_data="mode_horror")
+                InlineKeyboardButton(
+                    text="⚔️ قتال",
+                    callback_data="mode_fight"
+                ),
+                InlineKeyboardButton(
+                    text="😱 رعب",
+                    callback_data="mode_horror"
+                )
             ],
             [
-                InlineKeyboardButton(text="🏰 فانتازيا", callback_data="mode_fantasy"),
-                InlineKeyboardButton(text="🔮 غموض", callback_data="mode_mystery")
-            ],
-            [
-                InlineKeyboardButton(text="🎲 قصة عشوائية", callback_data="mode_random")
+                InlineKeyboardButton(
+                    text="🏰 فانتازيا",
+                    callback_data="mode_fantasy"
+                ),
+                InlineKeyboardButton(
+                    text="🔮 غموض",
+                    callback_data="mode_mystery"
+                )
             ]
         ]
     )
 
 
 def main_menu():
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎮 بدء القصة", callback_data="start_story")],
-            [InlineKeyboardButton(text="🔄 قصة جديدة", callback_data="new_story")],
-            [InlineKeyboardButton(text="👤 Developer: Ali Hussein", url="https://t.me/alw_sh313")]
-        ]
-    )
 
-
-def gender_menu():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
             [
-                InlineKeyboardButton(text="👨 ذكر", callback_data="gender_male"),
-                InlineKeyboardButton(text="👩 أنثى", callback_data="gender_female")
+                InlineKeyboardButton(
+                    text="🎭 شخصيتي",
+                    callback_data="my_character"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="📖 ملخص القصة",
+                    callback_data="story_summary"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="🔊 تشغيل/إيقاف الصوت",
+                    callback_data="toggle_voice"
+                )
+            ],
+
+            [
+                InlineKeyboardButton(
+                    text="👤 Developer: Ali Hussein",
+                    url="https://t.me/alw_sh313"
+                )
             ]
         ]
     )
-
-
-# =========================
-# 🎭 START (تم التعديل فقط هنا)
+    # =========================
+# START
 # =========================
 
 @dp.message(CommandStart())
@@ -194,57 +255,84 @@ async def start(message: Message):
     except:
         pass
 
-    # =========================
-    # 📸 تم إضافة الصورة فقط هنا
-    # =========================
-    photo = FSInputFile("C684B819-55BE-496C-84F0-FCEF39A0DF10.PNG")
+    if user_exists(message.from_user.id):
+
+        user = get_user(message.from_user.id)
+
+        await message.answer(
+            f"🎭 مرحباً بعودتك {user[1]}\n\n"
+            f"قصتك ما زالت مستمرة داخل عالم {user[3]}",
+            reply_markup=main_menu()
+        )
+
+        return
+
+    photo = FSInputFile(
+        "C684B819-55BE-496C-84F0-FCEF39A0DF10.PNG"
+    )
 
     await message.answer_photo(
         photo=photo,
         caption=(
-            "━━━━━━━━━━━━━━━━━━\n"
-            "🎭✨ أهلاً بك في عالم السيناريوهات التفاعلية ✨🎭\n"
-            "⚔️ هنا لا توجد قصة مكتوبة مسبقاً… بل أنت من يصنع المصير\n\n"
-            "🌍 عالم حي يتغير مع كل قرار تتخذه\n"
-            "🧠 شخصيات تتذكرك… وأحداث تتطور معك\n"
-            "🔥 نجاحك يصنع أسطورتك… وخسارتك تصنع بداية جديدة\n\n"
-            "🎮 هل لديك الجرأة لبدء الرحلة؟\n"
-            "اضغط (بدء القصة) الآن وابدأ مغامرتك\n"
-            "━━━━━━━━━━━━━━━━━━"
-        ),
-        reply_markup=main_menu()
+            "🎭 أهلاً بك في عالم السيناريوهات التفاعلية\n\n"
+            "⚠️ تنبيه مهم\n\n"
+            "بعد إنشاء شخصيتك لن تستطيع:\n"
+            "• تغيير الاسم\n"
+            "• تغيير الجنس\n"
+            "• تغيير نوع العالم\n\n"
+            "وستعيش بهذه الشخصية طوال رحلتك."
+        )
+    )
+
+    await message.answer(
+        "👤 اختر جنس الشخصية:",
+        reply_markup=gender_menu()
     )
 
 
 # =========================
-# باقي الكود بدون تغيير
+# اختيار الجنس
 # =========================
 
-@dp.callback_query(F.data == "start_story")
-async def start_story(callback: CallbackQuery):
-    await callback.message.answer("👤 اختر الجنس:", reply_markup=gender_menu())
-    await callback.answer()
-
-
 @dp.callback_query(F.data.startswith("gender_"))
-async def set_gender(callback: CallbackQuery):
+async def choose_gender(callback: CallbackQuery):
 
     uid = callback.from_user.id
-    gender = callback.data.replace("gender_", "")
+
+    gender = callback.data.replace(
+        "gender_",
+        ""
+    )
 
     user_gender[uid] = gender
 
-    await callback.message.answer("🎮 اختر نوع القصة:", reply_markup=story_modes())
+    await callback.message.answer(
+        "🌍 اختر نوع العالم:"
+    )
+
+    await callback.message.answer(
+        "اختر نوع قصتك:",
+        reply_markup=story_modes()
+    )
+
     await callback.answer()
 
 
+# =========================
+# اختيار العالم
+# =========================
+
 @dp.callback_query(F.data.startswith("mode_"))
-async def set_mode(callback: CallbackQuery):
+async def choose_mode(callback: CallbackQuery):
 
     uid = callback.from_user.id
-    mode = callback.data.replace("mode_", "")
 
-    modes_text = {
+    mode = callback.data.replace(
+        "mode_",
+        ""
+    )
+
+    names = {
         "calm": "هدوء",
         "adventure": "مغامرة",
         "fight": "قتال",
@@ -253,105 +341,296 @@ async def set_mode(callback: CallbackQuery):
         "mystery": "غموض"
     }
 
-    if mode == "random":
-        mode = random.choice(list(modes_text.keys()))
+    user_story_type[uid] = names.get(
+        mode,
+        mode
+    )
 
-    gender = user_gender.get(uid, "غير محدد")
+    waiting_name[uid] = True
 
-    user_sessions[uid] = [
-        f"جنس الشخصية: {gender}",
-        f"نوع القصة: {modes_text.get(mode)}",
-        "ابدأ القصة"
-    ]
-
-    user_states[uid] = {"score": 0}
-
-    if uid not in user_xp:
-        user_xp[uid] = 0
-
-    if uid not in user_level:
-        user_level[uid] = 1
-
-    await callback.message.answer("⏳ جاري إنشاء القصة...")
-
-    response = await generate_story("\n".join(user_sessions[uid]))
-
-    user_sessions[uid].append(f"Bot: {response}")
-
-    await callback.message.answer(response, reply_markup=main_menu())
-    await callback.message.answer("🔊 جاري الصوت...")
-
-    asyncio.create_task(send_voice_later(response, uid, callback.message))
-    asyncio.create_task(send_music(response, callback.message))
+    await callback.message.answer(
+        "✍️ اكتب اسم شخصيتك الآن:"
+    )
 
     await callback.answer()
 
 
-@dp.callback_query(F.data == "new_story")
-async def new_story(callback: CallbackQuery):
-
-    uid = callback.from_user.id
-
-    user_sessions[uid] = ["ابدأ قصة جديدة"]
-    user_states[uid] = {"score": 0}
-
-    await callback.message.answer("🔄 جاري القصة...")
-
-    response = await generate_story("\n".join(user_sessions[uid]))
-
-    user_sessions[uid].append(f"Bot: {response}")
-
-    await callback.message.answer(response, reply_markup=main_menu())
-    await callback.message.answer("🔊 جاري الصوت...")
-
-    asyncio.create_task(send_voice_later(response, uid, callback.message))
-    asyncio.create_task(send_music(response, callback.message))
-
-    await callback.answer()
-
+# =========================
+# إنشاء الشخصية
+# =========================
 
 @dp.message()
-async def handle_message(message: Message):
+async def create_character(message: Message):
 
     uid = message.from_user.id
-    text = message.text
 
-    if uid not in user_sessions:
-        await message.answer("اضغط بدء القصة", reply_markup=main_menu())
+    if uid not in waiting_name:
         return
 
-    user_sessions[uid].append(f"User: {text}")
+    character_name = message.text.strip()
 
-    user_xp[uid] = user_xp.get(uid, 0) + random.randint(5, 15)
+    if len(character_name) < 2:
 
-    level_up_text = ""
+        await message.answer(
+            "❌ الاسم قصير جداً"
+        )
 
-    new_level = (user_xp[uid] // 100) + 1
+        return
 
-    if uid not in user_level:
-        user_level[uid] = 1
+    create_user(
+        user_id=uid,
+        character_name=character_name,
+        gender=user_gender[uid],
+        story_type=user_story_type[uid]
+    )
 
-    if new_level > user_level[uid]:
-        user_level[uid] = new_level
-        level_up_text = f"\n\n🎉 ترقية مستوى!\n⭐ المستوى: {new_level}"
-
-    response = await generate_story("\n".join(user_sessions[uid]))
-
-    stats = f"""
-━━━━━━━━━━━━━━
-⭐ المستوى: {user_level[uid]}
-✨ الخبرة: {user_xp[uid]} XP
-━━━━━━━━━━━━━━
-"""
-
-    user_sessions[uid].append(f"Bot: {response}")
+    waiting_name.pop(uid)
 
     await message.answer(
-        response + level_up_text + stats,
+        "⏳ يتم إنشاء عالمك الخاص..."
+    )
+
+    response = await generate_story(
+        character_name,
+        user_gender[uid],
+        user_story_type[uid],
+        "",
+        "",
+        "بداية القصة"
+    )
+
+    update_history(
+        uid,
+        response
+    )
+
+    await message.answer(
+        response,
         reply_markup=main_menu()
     )
 
-    await message.answer("🔊 جاري الصوت...")
+    asyncio.create_task(
+        send_voice_later(
+            response,
+            uid,
+            message
+        )
+    )
+    # =========================
+# شخصيتي
+# =========================
 
-    asyncio.create_task(send_voice_later(response, uid, message))
-    asyncio.create_task(send_music(response, message))
+@dp.callback_query(F.data == "my_character")
+async def my_character(callback: CallbackQuery):
+
+    user = get_user(
+        callback.from_user.id
+    )
+
+    if not user:
+        await callback.answer()
+        return
+
+    text = (
+        f"🎭 معلومات الشخصية\n\n"
+        f"👤 الاسم: {user[1]}\n"
+        f"⚧ الجنس: {user[2]}\n"
+        f"🌍 العالم: {user[3]}\n\n"
+        f"⭐ المستوى: {user[4]}\n"
+        f"✨ الخبرة: {user[5]} XP"
+    )
+
+    await callback.message.answer(text)
+
+    await callback.answer()
+
+
+# =========================
+# ملخص القصة
+# =========================
+
+@dp.callback_query(F.data == "story_summary")
+async def story_summary_handler(
+    callback: CallbackQuery
+):
+
+    user = get_user(
+        callback.from_user.id
+    )
+
+    if not user:
+        await callback.answer()
+        return
+
+    summary = user[6]
+
+    if not summary:
+        summary = "لا يوجد ملخص بعد."
+
+    await callback.message.answer(
+        f"📖 ملخص القصة\n\n{summary}"
+    )
+
+    await callback.answer()
+
+
+# =========================
+# تشغيل وإيقاف الصوت
+# =========================
+
+@dp.callback_query(F.data == "toggle_voice")
+async def toggle_voice(callback: CallbackQuery):
+
+    user = get_user(
+        callback.from_user.id
+    )
+
+    if not user:
+        await callback.answer()
+        return
+
+    current = bool(user[8])
+
+    set_voice(
+        callback.from_user.id,
+        not current
+    )
+
+    if current:
+        text = "🔇 تم إيقاف الصوت"
+    else:
+        text = "🔊 تم تشغيل الصوت"
+
+    await callback.message.answer(text)
+
+    await callback.answer()
+
+
+# =========================
+# متابعة القصة
+# =========================
+
+@dp.message()
+async def continue_story(message: Message):
+
+    uid = message.from_user.id
+
+    if uid in waiting_name:
+        return
+
+    if not user_exists(uid):
+        return
+
+    user = get_user(uid)
+
+    character_name = user[1]
+    gender = user[2]
+    story_type = user[3]
+
+    level = user[4]
+    xp = user[5]
+
+    summary = user[6] or ""
+    history = user[7] or ""
+
+    player_action = message.text
+
+    xp += random.randint(5, 15)
+
+    new_level = (xp // 100) + 1
+
+    level_up_text = ""
+
+    if new_level > level:
+        level = new_level
+
+        level_up_text = (
+            f"\n\n🎉 ترقية مستوى!\n"
+            f"⭐ المستوى الجديد: {level}"
+        )
+
+    response = await generate_story(
+        character_name,
+        gender,
+        story_type,
+        summary,
+        history,
+        player_action
+    )
+
+    history_lines = history.split("\n")
+
+    history_lines.append(
+        f"اللاعب: {player_action}"
+    )
+
+    history_lines.append(
+        f"القصة: {response}"
+    )
+
+    history_lines = history_lines[-20:]
+
+    new_history = "\n".join(
+        history_lines
+    )
+
+    update_history(
+        uid,
+        new_history
+    )
+
+    update_xp_level(
+        uid,
+        xp,
+        level
+    )
+
+    count = get_message_count(uid)
+
+    count += 1
+
+    update_message_count(
+        uid,
+        count
+    )
+
+    # تحديث الملخص كل 10 رسائل
+
+    if count % 10 == 0:
+
+        try:
+
+            new_summary = await generate_summary(
+                summary,
+                new_history
+            )
+
+            update_summary(
+                uid,
+                new_summary
+            )
+
+        except:
+            pass
+
+    stats = (
+        f"\n\n━━━━━━━━━━━━━━\n"
+        f"⭐ المستوى: {level}\n"
+        f"✨ الخبرة: {xp} XP\n"
+        f"━━━━━━━━━━━━━━"
+    )
+
+    await message.answer(
+        response +
+        level_up_text +
+        stats,
+        reply_markup=main_menu()
+    )
+
+    asyncio.create_task(
+        send_voice_later(
+            response,
+            uid,
+            message
+        )
+    )
