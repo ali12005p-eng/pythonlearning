@@ -27,6 +27,8 @@ def init_db():
 
         voice_enabled INTEGER DEFAULT 1,
 
+        message_count INTEGER DEFAULT 0,
+
         created_at TEXT
     )
     """)
@@ -160,6 +162,43 @@ def set_voice(user_id: int, enabled: bool):
     WHERE user_id = ?
     """, (
         1 if enabled else 0,
+        user_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def get_message_count(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT message_count
+    FROM users
+    WHERE user_id = ?
+    """, (user_id,))
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result:
+        return result[0]
+
+    return 0
+
+
+def update_message_count(user_id: int, count: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE users
+    SET message_count = ?
+    WHERE user_id = ?
+    """, (
+        count,
         user_id
     ))
 
