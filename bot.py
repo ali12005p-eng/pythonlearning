@@ -592,7 +592,3 @@ async def toggle_voice(callback: CallbackQuery):
     await callback.answer()
 
 
-# =========================
-# متابعة القصة
-# =========================
-
