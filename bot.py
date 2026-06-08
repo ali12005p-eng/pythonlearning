@@ -361,7 +361,8 @@ async def choose_mode(callback: CallbackQuery):
 
 @dp.message()
 async def create_character(message: Message):
-    print("CONTINUE STORY WORKING")
+
+print("CONTINUE STORY WORKING")
 
     uid = message.from_user.id
 
