@@ -366,8 +366,92 @@ async def create_character(message: Message):
 
     uid = message.from_user.id
 
-    if uid not in waiting_name:
+# متابعة القصة للمستخدمين الموجودين
+
+if uid not in waiting_name:
+
+    if not user_exists(uid):
         return
+
+    user = get_user(uid)
+
+    character_name = user[1]
+    gender = user[2]
+    story_type = user[3]
+
+    level = user[4]
+    xp = user[5]
+
+    summary = user[6] or ""
+    history = user[7] or ""
+
+    player_action = message.text
+
+    xp += random.randint(5, 15)
+
+    new_level = (xp // 100) + 1
+
+    level_up_text = ""
+
+    if new_level > level:
+        level = new_level
+        level_up_text = (
+            f"\n\n🎉 ترقية مستوى!\n"
+            f"⭐ المستوى الجديد: {level}"
+        )
+
+    response = await generate_story(
+        character_name,
+        gender,
+        story_type,
+        summary,
+        history,
+        player_action
+    )
+
+    history_lines = history.split("\n")
+    history_lines.append(f"اللاعب: {player_action}")
+    history_lines.append(f"القصة: {response}")
+
+    new_history = "\n".join(history_lines[-20:])
+
+    update_history(uid, new_history)
+    update_xp_level(uid, xp, level)
+
+    count = get_message_count(uid) + 1
+    update_message_count(uid, count)
+
+    if count % 10 == 0:
+        try:
+            new_summary = await generate_summary(
+                summary,
+                new_history
+            )
+            update_summary(uid, new_summary)
+        except:
+            pass
+
+    stats = (
+        f"\n\n━━━━━━━━━━━━━━\n"
+        f"⭐ المستوى: {level}\n"
+        f"✨ الخبرة: {xp} XP\n"
+        f"━━━━━━━━━━━━━━"
+    )
+
+    await message.answer(
+        response + level_up_text + stats,
+        reply_markup=main_menu()
+    )
+
+    asyncio.create_task(
+        send_voice_later(
+            response,
+            uid,
+            message
+        )
+    )
+
+    return
 
     character_name = message.text.strip()
 
@@ -512,127 +596,3 @@ async def toggle_voice(callback: CallbackQuery):
 # متابعة القصة
 # =========================
 
-@dp.message()
-async def continue_story(message: Message):
-
-    uid = message.from_user.id
-
-    if uid in waiting_name:
-        return
-
-    if not user_exists(uid):
-        return
-
-    user = get_user(uid)
-
-    character_name = user[1]
-    gender = user[2]
-    story_type = user[3]
-
-    level = user[4]
-    xp = user[5]
-
-    summary = user[6] or ""
-    history = user[7] or ""
-
-    player_action = message.text
-
-    xp += random.randint(5, 15)
-
-    new_level = (xp // 100) + 1
-
-    level_up_text = ""
-
-    if new_level > level:
-        level = new_level
-
-        level_up_text = (
-            f"\n\n🎉 ترقية مستوى!\n"
-            f"⭐ المستوى الجديد: {level}"
-        )
-
-    response = await generate_story(
-        character_name,
-        gender,
-        story_type,
-        summary,
-        history,
-        player_action
-    )
-
-    history_lines = history.split("\n")
-
-    history_lines.append(
-        f"اللاعب: {player_action}"
-    )
-
-    history_lines.append(
-        f"القصة: {response}"
-    )
-
-    history_lines = history_lines[-20:]
-
-    new_history = "\n".join(
-        history_lines
-    )
-
-    update_history(
-        uid,
-        new_history
-    )
-
-    update_xp_level(
-        uid,
-        xp,
-        level
-    )
-
-    count = get_message_count(uid)
-
-    count += 1
-
-    update_message_count(
-        uid,
-        count
-    )
-
-    # تحديث الملخص كل 10 رسائل
-
-    if count % 10 == 0:
-
-        try:
-
-            new_summary = await generate_summary(
-                summary,
-                new_history
-            )
-
-            update_summary(
-                uid,
-                new_summary
-            )
-
-        except:
-            pass
-
-    stats = (
-        f"\n\n━━━━━━━━━━━━━━\n"
-        f"⭐ المستوى: {level}\n"
-        f"✨ الخبرة: {xp} XP\n"
-        f"━━━━━━━━━━━━━━"
-    )
-
-    await message.answer(
-        response +
-        level_up_text +
-        stats,
-        reply_markup=main_menu()
-    )
-
-    asyncio.create_task(
-        send_voice_later(
-            response,
-            uid,
-            message
-        )
-    )
