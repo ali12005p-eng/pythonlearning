@@ -371,7 +371,7 @@ async def create_character(message: Message):
 if uid not in waiting_name:
 
     if not user_exists(uid):
-        return
+    return
 
     user = get_user(uid)
 
